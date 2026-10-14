@@ -207,7 +207,7 @@ components:
       properties:
         service:
           type: string
-          const: gateway
+          const: atc-gateway
         version:
           type: string
           description: gateway's own package.json version.

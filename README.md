@@ -46,7 +46,7 @@ npm run typecheck
 
 **Purpose:** the single public entry point that routes, authenticates, rate-limits and observes traffic to every other service.
 
-**Responsibilities:** route matching (`routes.json`); JWT verification; rate-limit policy enforcement (delegated to `ratelimit`); geo header injection (delegated to `geo`); CORS; trace propagation; per-upstream circuit breaker (closed/open/half-open); live `routes.json` reload via `SIGHUP`.
+**Responsibilities:** route matching (`routes.json`); JWT verification; rate-limit policy enforcement (delegated to `atc-ratelimit`); geo header injection (delegated to `atc-geo`); CORS; trace propagation; per-upstream circuit breaker (closed/open/half-open); live `routes.json` reload via `SIGHUP`.
 
 **Non-responsibilities:** gateway ≠ business logic — it forwards requests and headers, it does not implement or validate domain rules, and it owns no state of its own for rate limits or geolocation (both delegated to their owning service). One narrow exception worth naming: it does read the `email`/`email_verified` claims out of a verified JWT by name to set `x-user-email`/`x-user-email-verified` headers, a small, deliberate coupling to auth's token shape rather than a fully opaque claims pass-through. It does not retry or queue failed requests — that's each upstream's own concern.
 
@@ -126,13 +126,13 @@ See [.env.example](.env.example). Nothing is required except the environment var
 ## Upgrading
 
 For the general upgrade procedure (pull, `npm ci`, backup, restart, confirm readiness), see
-`stack/docs/UPGRADE.md`. This section covers gateway-specific concerns only.
+`atc-stack/docs/UPGRADE.md`. This section covers gateway-specific concerns only.
 
 **Stage 9**: any existing `routes.json` with a `policy` block that doesn't already set `failOpen`
 now fails startup validation (`<route>.policy.failOpen is required when policy is set`) — there is
 no default any more, on purpose (see "Routes" above). Before upgrading, add an explicit
 `"failOpen": true` or `"failOpen": false` to every `policy` in your `routes.json`. Routes without a
-`policy` are unaffected. `stack`-generated `routes.json` files ship no `policy` block today and need
+`policy` are unaffected. `atc-stack`-generated `routes.json` files ship no `policy` block today and need
 no change.
 
 ## Security notes
@@ -185,15 +185,15 @@ histogram (`gateway_upstream_latency_ms`, per route only — never per raw URL, 
 instance), circuit breaker state/failure-count/transition counters (per route+upstream — a small,
 static, config-bounded set, not per-request data) and rejection/dependency-error counters — all
 process-local, reset on restart. As of post-production Phase 5, the request's own `X-Request-Id`/
-`traceparent` are also sent on gateway's internal call to `ratelimit` for policy checks
-(`src/rate-limit-client.js`), so a `ratelimit` decision for this request is traceable back to it;
-no public gateway behaviour changed — see [OBSERVABILITY.md](../stack/docs/OBSERVABILITY.md).
+`traceparent` are also sent on gateway's internal call to `atc-ratelimit` for policy checks
+(`src/rate-limit-client.js`), so an `atc-ratelimit` decision for this request is traceable back to it;
+no public gateway behaviour changed — see [OBSERVABILITY.md](../atc-stack/docs/OBSERVABILITY.md).
 
 ## Backup / restore
 
 No database. The only state to keep under version control is `routes.json` itself; restoring means
 redeploying it and restarting. `stack backup`/`stack restore` from the workspace root (see
-`stack/docs/UPGRADE.md`) captures `routes.json` alongside the rest of the stack, for operators who
+`atc-stack/docs/UPGRADE.md`) captures `routes.json` alongside the rest of the stack, for operators who
 prefer that over version control alone.
 
 See [docs/READINESS.md](docs/READINESS.md) for the full contract.

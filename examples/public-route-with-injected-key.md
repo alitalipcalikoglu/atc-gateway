@@ -13,7 +13,7 @@ Scenario: your single-page app calls auth directly for login and registration, b
 `.env` on the gateway host:
 
 ```
-AUTH_API_KEY=<the secret of the "gateway" entry in auth's AUTH_API_KEYS>
+AUTH_API_KEY=<the secret of the "atc-gateway" entry in auth's AUTH_API_KEYS>
 ```
 
 ## From the browser

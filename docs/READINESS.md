@@ -106,13 +106,13 @@ Custom access-log line (not Fastify's default; `disableRequestLogging: true`) wi
 connect through last response byte; omitted for a request that never reached a route/upstream —
 404, rate-limited, unauthorized, etc.), `ip`, `upstream`, `ua`, `reqId`, and `traceId`. Stage 9 also
 adds a one-off structured log line on every circuit breaker state transition (`route`, `upstream`,
-`from`, `to`) — never per request. See [OBSERVABILITY.md](../../stack/docs/OBSERVABILITY.md) for
+`from`, `to`) — never per request. See [OBSERVABILITY.md](../../atc-stack/docs/OBSERVABILITY.md) for
 the full target vocabulary and what is still missing (`service`, `version`, `spanId`).
 
 ## Tracing
 
 The only service that implements the `X-Request-Id` trust boundary and `traceparent` propagation
-described in [OBSERVABILITY.md](../../stack/docs/OBSERVABILITY.md): both are honoured only when
+described in [OBSERVABILITY.md](../../atc-stack/docs/OBSERVABILITY.md): both are honoured only when
 `TRUST_PROXY=true`, generated fresh otherwise, and forwarded to whichever upstream handles the
 request. Both are echoed back to the caller on the response.
 

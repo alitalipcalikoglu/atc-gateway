@@ -39,6 +39,17 @@
       "policy": { "name": "public-downloads", "subject": "ip", "failOpen": true }
     },
     {
+      "id": "content-bundles",
+      "pathPrefix": "/api/content/v1/bundles/",
+      "stripPrefix": "/api/content",
+      "upstreams": ["http://10.0.0.13:3013"],
+      "methods": ["GET", "HEAD", "OPTIONS"],
+      "injectApiKey": "CONTENT_API_KEY",
+      "cors": ["*"],
+      "rateLimit": 600,
+      "policy": { "name": "public-content", "subject": "ip", "failOpen": true }
+    },
+    {
       "id": "jwks",
       "pathPrefix": "/.well-known/jwks.json",
       "upstreams": ["http://10.0.0.2:3002"],

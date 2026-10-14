@@ -60,3 +60,26 @@ A public route with an injected key hands that key's power to anyone. Limit the 
 | 413 `TOO_LARGE` | gateway | body over `bodyLimit` |
 | 429 `RATE_LIMITED` | gateway | per-IP limit hit, `Retry-After` set |
 | 401 / 423 / 409 … | auth | passed through unchanged |
+
+## Read-only: translation bundles for a browser app
+
+The same pattern serves published strings from `atc-content` without giving the browser a key. Only `/v1/bundles/` is behind the prefix, so nothing else of the content service is reachable, and the injected key has the `read` role only.
+
+```json
+{ "id": "content-bundles", "pathPrefix": "/api/content/v1/bundles/", "stripPrefix": "/api/content",
+  "upstreams": ["http://10.0.0.13:3013"], "methods": ["GET", "HEAD", "OPTIONS"],
+  "injectApiKey": "CONTENT_API_KEY", "cors": ["*"], "rateLimit": 600,
+  "policy": { "name": "public-content", "subject": "ip", "failOpen": true } }
+```
+
+```
+CONTENT_API_KEY=<the secret of the "atc-gateway" entry in content's CONTENT_API_KEYS, role read>
+```
+
+```js
+const res = await fetch('https://api.example.com/api/content/v1/bundles/web/tr-CY', { headers: etag ? { 'if-none-match': etag } : {} });
+if (res.status === 304) return cached;
+const { strings, release } = await res.json();
+```
+
+`ETag` and `Cache-Control: public, max-age=60` from the content service pass through unchanged, so browsers and CDNs revalidate with `304`. Create the `public-content` policy in the ratelimit service before deploying the route (a missing policy counts as unavailable; with `failOpen: true` requests still pass). The local stack generates this route without a policy, relying on the per-IP `rateLimit`.

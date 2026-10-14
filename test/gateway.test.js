@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { after, before, test } from 'node:test';
 import { exportJWK, importPKCS8, SignJWT } from 'jose';
@@ -242,4 +242,26 @@ test('/v1/info reports identity, capabilities and null schemaVersion/serviceCore
     serviceCore: null,
     routesRevision: null,
   });
+});
+
+test('rejects dot segments and encoded dots, slashes and backslashes before route matching', async () => {
+  // Raw HTTP on a real socket: inject() would normalise "..", a real client need not.
+  await app.listen({ port: 0, host: '127.0.0.1' });
+  const port = /** @type {import('node:net').AddressInfo} */ (app.server.address()).port;
+  const raw = (/** @type {string} */ path) => new Promise((resolve, reject) => {
+    request({ host: '127.0.0.1', port, path, method: 'GET' }, (res) => {
+      let body = '';
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    }).on('error', reject).end();
+  });
+  for (const path of ['/api/content/v1/bundles/../x', '/api/content/v1/bundles/%2e%2e/x', '/api/content/v1/bundles/..%2fx', '/files/./abc', '/files/%2E%2E/abc', '/files/a%5Cb', '/files/a%2Fb?x=1', '/files/a\\b', '/files/..']) {
+    const res = /** @type {{ status: number, body: string }} */ (await raw(path));
+    assert.equal(res.status, 400, path);
+    assert.equal(JSON.parse(res.body).error.code, 'INVALID_PATH', path);
+  }
+  const ok = /** @type {{ status: number, body: string }} */ (await raw('/files/abc.v2/original?x=../y'));
+  assert.equal(ok.status, 200, 'a dot inside a segment and dots in the query are fine');
+  assert.equal(JSON.parse(ok.body).url, '/files/abc.v2/original?x=../y');
+  assert.equal(GatewayApi.unsafePath('/a/b..c/d'), false);
 });

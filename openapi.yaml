@@ -16,6 +16,9 @@ x-gateway-proxy-note: >-
   deployment configuration, not a fixed source-level contract — the actual proxied paths and
   methods differ per environment and are not enumerated as OpenAPI paths in this document. Each
   proxied route's own request/response contract lives in the target service's own openapi.yaml.
+  Before any route is matched, a path (query excluded) with a `.` or `..` segment, an encoded dot,
+  slash or backslash (`%2e`, `%2f`, `%5c`, any case) or a literal backslash is answered with
+  `400 { error: { code: INVALID_PATH } }` and never forwarded; no route sees it.
 paths:
   /openapi.yaml:
     get:

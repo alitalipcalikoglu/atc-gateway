@@ -138,6 +138,7 @@ no change.
 ## Security notes
 
 - Secrets never live in `routes.json`; it only names environment variables, so the file can be versioned.
+- Paths are checked before route matching: a `.` or `..` segment, an encoded dot, slash or backslash (`%2e`, `%2f`, `%5c`, any case) or a literal backslash answers `400 INVALID_PATH` and is never forwarded. This keeps a route's prefix a real boundary even when the upstream would normalise such paths, which matters most for routes that inject a service key.
 - Routes with `injectApiKey` and `auth: "none"` hand the service key to anonymous traffic. Use them only for endpoints designed for that (login, registration, public downloads) and constrain `methods` and `rateLimit`.
 - Request bodies are streamed, never buffered; limits are enforced while streaming so an oversized upload is cut, not stored.
 - Rate limiting and cooldown state are per process. Behind a TCP balancer with several gateway instances, limits apply per instance.

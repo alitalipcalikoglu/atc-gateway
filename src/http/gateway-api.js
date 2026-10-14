@@ -192,6 +192,15 @@ export class GatewayApi {
     reply.header('server', this.config.serverName);
   }
 
+  /**
+   * True for a path (query already removed) with a `.` or `..` segment, an encoded dot, slash or
+   * backslash (`%2e`, `%2f`, `%5c`, any case), or a literal backslash.
+   * @param {string} path
+   */
+  static unsafePath(path) {
+    return /%(2e|2f|5c)/i.test(path) || path.includes('\\') || path.split('/').some((s) => s === '.' || s === '..');
+  }
+
   /** @type {FastifyInstance['errorHandler']} */
   #errorHandler = (rawErr, request, reply) => {
     const err = /** @type {Error & { statusCode?: number, code?: string }} */ (rawErr);
@@ -210,7 +219,6 @@ export class GatewayApi {
   #handle = async (request, reply) => {
     const started = process.hrtime.bigint();
     const path = request.url.split('?')[0];
-    const route = this.routes.match(request.hostname, path);
     const log = request.log;
     const finish = (/** @type {string} */ routeId, /** @type {number} */ status, /** @type {{ upstream?: string, bytesIn?: number, bytesOut?: number, upstreamMs?: number }} */ extra = {}) => {
       const durationMs = Number(process.hrtime.bigint() - started) / 1e6;
@@ -219,6 +227,13 @@ export class GatewayApi {
       log.info({ route: routeId, method: request.method, path, status, durationMs: Math.round(durationMs * 10) / 10, upstreamMs: extra.upstreamMs !== undefined ? Math.round(extra.upstreamMs * 10) / 10 : undefined, ip: request.ip, upstream: extra.upstream, ua: request.headers['user-agent'], reqId: request.id, traceId: request.trace.traceId }, 'access');
     };
 
+    // Defense in depth for routes that inject a server key: never forward a path an upstream
+    // could resolve outside the matched prefix, whether or not that upstream normalises it.
+    if (GatewayApi.unsafePath(path)) {
+      finish('-', 400);
+      return reply.code(400).send({ error: { code: 'INVALID_PATH', message: 'path must not contain dot segments or encoded dots, slashes or backslashes' } });
+    }
+    const route = this.routes.match(request.hostname, path);
     if (!route) {
       this.metrics.gateway.noRoute += 1;
       finish('-', 404);

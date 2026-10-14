@@ -141,7 +141,7 @@ no change.
 - Paths are checked before route matching: a `.` or `..` segment, an encoded dot, slash or backslash (`%2e`, `%2f`, `%5c`, any case) or a literal backslash answers `400 INVALID_PATH` and is never forwarded. This keeps a route's prefix a real boundary even when the upstream would normalise such paths, which matters most for routes that inject a service key.
 - Routes with `injectApiKey` and `auth: "none"` hand the service key to anonymous traffic. Use them only for endpoints designed for that (login, registration, public downloads) and constrain `methods` and `rateLimit`.
 - Request bodies are streamed, never buffered; limits are enforced while streaming so an oversized upload is cut, not stored.
-- Rate limiting and cooldown state are per process. Behind a TCP balancer with several gateway instances, limits apply per instance.
+- The local limiter's table is capped at 100,000 clients (expired entries first, then the oldest), so an address flood cannot exhaust memory. Rate limiting and cooldown state are per process. Behind a TCP balancer with several gateway instances, limits apply per instance.
 - Metrics token compared in constant time. `Authorization` and `Cookie` are redacted from logs.
 - Container runs as the unprivileged `node` user.
 

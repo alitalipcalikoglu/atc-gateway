@@ -265,3 +265,16 @@ test('rejects dot segments and encoded dots, slashes and backslashes before rout
   assert.equal(JSON.parse(ok.body).url, '/files/abc.v2/original?x=../y');
   assert.equal(GatewayApi.unsafePath('/a/b..c/d'), false);
 });
+
+test('RateLimiter: the bucket table is capped, expired entries go first and a flood cannot grow it without bound', async () => {
+  const { RateLimiter } = await import('../src/rate-limiter.js');
+  const rl = new RateLimiter();
+  const max = RateLimiter.MAX_BUCKETS;
+  for (let i = 0; i < max; i++) rl.hit(`ip${i}`, 10, 1_000);
+  assert.equal(rl.size, max);
+  rl.hit('late', 10, 1_000 + RateLimiter.WINDOW_MS + 1); // every old bucket has expired: they all go
+  assert.equal(rl.size, 1);
+  for (let i = 0; i < max + 50; i++) rl.hit(`flood${i}`, 10, 5_000_000);
+  assert.ok(rl.size <= max, `size ${rl.size} stays within the cap`);
+  assert.equal(rl.hit('flood-last', 1, 5_000_000).allowed, true);
+});

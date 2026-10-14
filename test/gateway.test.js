@@ -234,7 +234,7 @@ test('/v1/info reports identity, capabilities and null schemaVersion/serviceCore
   const res = await app.inject('/v1/info');
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.json(), {
-    service: 'gateway',
+    service: 'atc-gateway',
     version: PACKAGE_VERSION,
     apiVersion: 'v1',
     capabilities: ['jwt-auth', 'rate-limit-policy', 'upstream-health-tracking', 'geo-headers', 'cors', 'trace-propagation'],

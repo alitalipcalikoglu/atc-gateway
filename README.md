@@ -1,4 +1,4 @@
-# gateway
+# atc-gateway
 
 The single public entry point in front of the other services. It routes by host and path prefix, verifies end-user access tokens against the auth service's JWKS, injects per-service API keys, applies rate limits, CORS, method allow-lists, body limits and timeouts, and streams requests and responses without buffering.
 

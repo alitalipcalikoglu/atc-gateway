@@ -7,7 +7,7 @@ const path = require('node:path');
 module.exports = {
   apps: [
     {
-      name: 'gateway',
+      name: 'atc-gateway',
       cwd: __dirname,
       script: 'src/index.js',
       node_args: [`--env-file=${path.join(__dirname, '.env')}`],

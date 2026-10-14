@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: gateway
+  title: atc-gateway
   version: "1.1.0"
   description: >-
     The single public entry point in front of the other atc-web services. It matches routes by
@@ -19,7 +19,7 @@ x-gateway-proxy-note: >-
 paths:
   /openapi.yaml:
     get:
-      operationId: gateway.openapi
+      operationId: atc-gateway.openapi
       summary: Download the canonical OpenAPI document
       description: Returns this service's repository-root OpenAPI 3.1 document byte-for-byte.
       security: []
@@ -32,7 +32,7 @@ paths:
 
   /health:
     get:
-      operationId: gateway.health.check
+      operationId: atc-gateway.health.check
       summary: Liveness check
       description: Always returns 200 once the process is accepting connections. No dependency checks.
       x-stack-visibility: public
@@ -55,7 +55,7 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
   /ready:
     get:
-      operationId: gateway.ready.check
+      operationId: atc-gateway.ready.check
       summary: Readiness check
       description: >-
         Polls every configured route's upstream(s) on their healthPath (2s timeout each, result
@@ -96,7 +96,7 @@ paths:
                 $ref: '#/components/schemas/ReadyResponse'
   /v1/info:
     get:
-      operationId: gateway.info.get
+      operationId: atc-gateway.info.get
       summary: Service identity and capabilities
       description: Static identity, capability list and the currently-loaded routes.json revision.
       x-stack-visibility: public
@@ -119,7 +119,7 @@ paths:
                 $ref: '#/components/schemas/InfoResponse'
   /metrics:
     get:
-      operationId: gateway.metrics.get
+      operationId: atc-gateway.metrics.get
       summary: Prometheus metrics
       description: >-
         Prometheus text exposition format: requests by route and status class, request and
@@ -228,7 +228,7 @@ components:
           description: Always null — gateway has no database and no versioned schema.
         serviceCore:
           type: "null"
-          description: Always null — gateway is the one service with no @atc-web/service-core dependency.
+          description: Always null — gateway is the one service with no @atc-web/atc-service-core dependency.
         routesRevision:
           type: ["string", "null"]
           description: >-

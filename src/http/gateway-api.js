@@ -16,7 +16,7 @@ import { UpstreamPool } from '../upstream-pool.js';
 /** @typedef {import('fastify').FastifyRequest} FastifyRequest */
 /** @typedef {import('fastify').FastifyReply} FastifyReply */
 
-// Stage 7: gateway is the one service with no @atc-web/service-core dependency (a deliberate,
+// Stage 7: gateway is the one service with no @atc-web/atc-service-core dependency (a deliberate,
 // long-standing choice — see service-core's own test/exports.test.js comment on why a `context`
 // subpath was removed rather than ever adopted here). So /v1/info's `version` is read the same
 // way service-core's own `readServiceVersion` would, just inlined; `serviceCore` is `null` since
@@ -139,7 +139,7 @@ export class GatewayApi {
       return reply.code(ready.ok ? 200 : 503).send({ status: ready.ok ? 'ok' : 'unavailable', upstreams: ready.detail });
     });
     app.get('/v1/info', { logLevel: 'warn' }, async () => ({
-      service: 'gateway',
+      service: 'atc-gateway',
       version: GATEWAY_VERSION,
       apiVersion: 'v1',
       capabilities: ['jwt-auth', 'rate-limit-policy', 'upstream-health-tracking', 'geo-headers', 'cors', 'trace-propagation'],

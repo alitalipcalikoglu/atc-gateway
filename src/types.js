@@ -10,6 +10,7 @@
  * @property {string} routesFile
  * @property {{ url: string, apiKey: string, timeoutMs: number }|null} ratelimit   Ratelimit service for route policies; null = off.
  * @property {{ url: string, apiKey: string, timeoutMs: number, cacheSec: number }|null} geo   Geo service for X-Geo-* headers; null = off.
+ * @property {{ url: string, apiKey: string, sampleSec: number }|null} audit   Audit service for refusals and route reloads; null = off.
  * @property {number} rateLimitMax          Default requests per minute per client IP.
  * @property {number} bodyLimit             Default request body limit in bytes.
  * @property {number} upstreamTimeoutMs     Time to first response byte.

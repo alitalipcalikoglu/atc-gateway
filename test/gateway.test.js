@@ -237,7 +237,7 @@ test('/v1/info reports identity, capabilities and null schemaVersion/serviceCore
     service: 'atc-gateway',
     version: PACKAGE_VERSION,
     apiVersion: 'v1',
-    capabilities: ['jwt-auth', 'rate-limit-policy', 'upstream-health-tracking', 'geo-headers', 'cors', 'trace-propagation'],
+    capabilities: ['jwt-auth', 'rate-limit-policy', 'upstream-health-tracking', 'geo-headers', 'cors', 'trace-propagation', 'denial-audit'],
     schemaVersion: null,
     serviceCore: null,
     routesRevision: null,

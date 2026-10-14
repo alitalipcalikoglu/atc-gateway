@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
+import { AuditClient } from './audit-client.js';
 import { Config, ConfigError } from './config.js';
+import { DenialAudit } from './denial-audit.js';
 import { GeoClient } from './geo-client.js';
 import { GatewayApi } from './http/gateway-api.js';
 import { RateLimitClient } from './rate-limit-client.js';
@@ -34,7 +36,9 @@ export class Application {
     this.policies = config.ratelimit ? new RateLimitClient(config.ratelimit) : null;
     this.geo = config.geo ? new GeoClient(config.geo) : null;
     Application.#checkIntegrations(config, routes, this.policies, this.geo);
-    this.api = new GatewayApi({ config, routes, jwt: this.jwt, policies: this.policies, geo: this.geo, routesRevision: revision });
+    this.auditClient = new AuditClient({ target: config.audit ? { url: config.audit.url, apiKey: config.audit.apiKey } : null });
+    this.denials = new DenialAudit(this.auditClient, { sampleSec: config.audit?.sampleSec ?? 10 });
+    this.api = new GatewayApi({ config, routes, jwt: this.jwt, policies: this.policies, geo: this.geo, routesRevision: revision, denials: this.denials, audit: this.auditClient });
     /** @type {import('fastify').FastifyInstance|null} */
     this.app = null;
     this.shuttingDown = false;
@@ -73,6 +77,8 @@ export class Application {
   async start() {
     const app = await this.api.build();
     this.app = app;
+    this.auditClient.logger = app.log;
+    this.auditClient.start();
     this.#installSignalHandlers(app.log);
     await app.listen({ port: this.config.port, host: this.config.host });
     app.log.info({
@@ -96,6 +102,7 @@ export class Application {
     }, this.config.upstreamTimeoutMs + 5_000).unref();
     try {
       await this.app?.close();
+      await this.auditClient.close();
       this.api.destroy();
       clearTimeout(forceExit);
       log.info('shutdown complete');
@@ -121,8 +128,10 @@ export class Application {
       const revision = routesRevision(this.config.routesFile);
       this.api.applyReload(routes, revision);
       this.routes = routes;
+      this.denials.reload(true, { revision, routes: routes.routes.length });
       log.info({ revision, routes: routes.routes.length }, 'routes reloaded');
     } catch (err) {
+      this.denials.reload(false, { error: (err instanceof Error ? err.message : String(err)).slice(0, 300) });
       log.error({ err: err instanceof Error ? err.message : String(err) }, 'routes reload failed, keeping the previous configuration');
     }
   }

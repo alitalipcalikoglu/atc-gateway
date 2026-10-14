@@ -115,6 +115,10 @@ These paths are reserved and never forwarded.
 - Point the auth service's `JWT_ISSUER` at the gateway's public URL and expose `/.well-known/jwks.json` through a route (see the example), so any consumer can verify tokens.
 - WebSockets and HTTP/2 to upstreams are not proxied; upstream connections are HTTP/1.1 keep-alive.
 
+## Audit trail
+
+With `AUDIT_URL` and `AUDIT_API_KEY` set, the edge records what it refuses and what it reloads: `atc-gateway.request.denied` (outcome `denied`; meta `reason` = `unauthorized`, `rate_limited`, `policy_limited`, `blocked` or `too_large`, plus `status` and `suppressed`) and `atc-gateway.routes.reload` (`success` or `failure`). Refusals are sampled per route, reason and client IP (`AUDIT_SAMPLE_SEC`, default 10); the access log and `/metrics` still count every one. See [examples/audit-trail.md](examples/audit-trail.md).
+
 ## Examples
 
 Scenario walkthroughs for every feature live in [examples/](examples/README.md).
@@ -158,6 +162,7 @@ Class-based; dependencies are injected through constructors, `src/application.js
 | `Proxy` | `src/proxy.js` | Header hygiene, streaming, limits, timeout, retry |
 | `JwtVerifier` | `src/jwt-verifier.js` | JWKS-backed access token verification |
 | `RateLimiter` | `src/rate-limiter.js` | Fixed-window per-client counters |
+| `AuditClient`, `DenialAudit` | `src/audit-client.js`, `src/denial-audit.js` | Buffered audit forwarding; sampled audit events for refusals and route reloads |
 | `Metrics` | `src/metrics.js` | Counters, histograms, Prometheus rendering |
 | `GatewayApi` | `src/http/gateway-api.js` | Request pipeline, CORS, probes, metrics endpoint |
 

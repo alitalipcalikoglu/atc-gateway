@@ -27,6 +27,7 @@ export class Config {
     this.serverName = v.serverName;
     this.ratelimit = v.ratelimit;
     this.geo = v.geo;
+    this.audit = v.audit;
     Object.freeze(this);
   }
 
@@ -62,6 +63,7 @@ export class Config {
       hstsMaxAge: r.integer('HSTS_MAX_AGE', certPath ? 31_536_000 : 0, { min: 0 }),
       ratelimit: Config.#service(r, 'RATELIMIT', { timeoutMs: r.integer('RATELIMIT_TIMEOUT_MS', 300, { min: 50 }) }),
       geo: Config.#service(r, 'GEO', { timeoutMs: r.integer('GEO_TIMEOUT_MS', 300, { min: 50 }), cacheSec: r.integer('GEO_CACHE_SEC', 600, { min: 1 }) }),
+      audit: Config.#service(r, 'AUDIT', { sampleSec: r.integer('AUDIT_SAMPLE_SEC', 10, { min: 0, max: 3_600 }) }),
       serverName,
     });
   }

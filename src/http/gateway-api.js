@@ -41,8 +41,12 @@ export class GatewayApi {
    * @param {import('../jwt-verifier.js').JwtVerifier|null} deps.jwt
    * @param {import('../types.js').Logger} [deps.logger]
    * @param {string|null} [deps.routesRevision]  Stage 9: file mtime + content hash, see `/v1/info`.
+   * @param {import('../denial-audit.js').DenialAudit|null} [deps.denials]  Audit trail of refusals; null = none.
+   * @param {import('../audit-client.js').AuditClient|null} [deps.audit]  Only for its metrics here.
    */
-  constructor({ config, routes, jwt, logger, policies = null, geo = null, routesRevision = null }) {
+  constructor({ config, routes, jwt, logger, policies = null, geo = null, routesRevision = null, denials = null, audit = null }) {
+    this.denials = denials;
+    this.audit = audit;
     this.policies = policies;
     this.geo = geo;
     this.config = config;
@@ -142,7 +146,7 @@ export class GatewayApi {
       service: 'atc-gateway',
       version: GATEWAY_VERSION,
       apiVersion: 'v1',
-      capabilities: ['jwt-auth', 'rate-limit-policy', 'upstream-health-tracking', 'geo-headers', 'cors', 'trace-propagation'],
+      capabilities: ['jwt-auth', 'rate-limit-policy', 'upstream-health-tracking', 'geo-headers', 'cors', 'trace-propagation', 'denial-audit'],
       schemaVersion: null,
       serviceCore: null,
       routesRevision: this.routesRevision,
@@ -155,7 +159,7 @@ export class GatewayApi {
         return reply.code(401).send({ error: { code: 'UNAUTHORIZED', message: 'invalid metrics token' } });
       }
       reply.type('text/plain; version=0.0.4; charset=utf-8');
-      return this.metrics.render(this.pools);
+      return this.metrics.render(this.pools) + (this.audit ? `${this.audit.metricLines().join('\n')}\n` : '');
     });
     app.all('/*', this.#handle);
     app.all('/', this.#handle);
@@ -270,6 +274,7 @@ export class GatewayApi {
     if (!limit.allowed) {
       this.metrics.gateway.rateLimited += 1;
       reply.header('retry-after', String(limit.retryAfterSec));
+      this.denials?.denied('rate_limited', request, route, 429);
       finish(route.id, 429);
       return reply.code(429).send({ error: { code: 'RATE_LIMITED', message: 'too many requests' } });
     }
@@ -295,6 +300,7 @@ export class GatewayApi {
         }
         this.metrics.gateway.unauthorized += 1;
         reply.header('www-authenticate', `Bearer error="${e.code === 'MISSING' ? 'invalid_request' : 'invalid_token'}"`);
+        this.denials?.denied('unauthorized', request, route, 401);
         finish(route.id, 401);
         return reply.code(401).send({ error: { code: e.code === 'MISSING' ? 'UNAUTHORIZED' : e.code, message: e.message } });
       }
@@ -310,6 +316,7 @@ export class GatewayApi {
         if (!d.allowed) {
           this.metrics.gateway.policyDenied += 1;
           if (d.retryAfter !== null) reply.header('retry-after', String(d.retryAfter));
+          this.denials?.denied(d.blocked ? 'blocked' : 'policy_limited', request, route, 429);
           finish(route.id, 429);
           return reply.code(429).send({ error: { code: d.blocked ? 'BLOCKED' : 'RATE_LIMITED', message: d.blocked ? 'this client is blocked' : 'too many requests' } });
         }
@@ -351,6 +358,7 @@ export class GatewayApi {
       return reply;
     } catch (err) {
       const status = err instanceof ProxyError ? err.statusCode : 502;
+      if (status === 413) this.denials?.denied('too_large', request, route, 413);
       finish(route.id, status);
       throw err;
     }

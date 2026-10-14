@@ -12,6 +12,7 @@ Scenario-driven walkthroughs of every feature. The gateway itself has no API key
 | [Upstream failover](upstream-failover.md) | Round-robin, cooldown, retry rules, 502 vs 504 |
 | [Central rate limit policies](policies.md) | Per-user, per-key and per-IP quotas checked in the ratelimit service, fail-open vs fail-closed, headers |
 | [Geo headers](geo-headers.md) | Country and time zone of the client on every request, cache, spoofing protection |
+| [Audit trail](audit-trail.md) | Refused requests and route reloads as audit events, sampling, what to look for |
 | [Operations](operations.md) | Readiness by upstream health, metrics, access logs, TLS, PM2, Docker |
 
 Set up once:

@@ -226,6 +226,18 @@ export class UpstreamPool {
   }
 
   /**
+   * Result of an active health check: a direct observation, so it is authoritative on its own. A
+   * pass closes the breaker (the upstream rejoins), a failure counts like a failed request.
+   * @param {Upstream} u
+   * @param {boolean} healthy
+   * @param {{ now?: number, onTransition?: (u: Upstream, t: Transition) => void }} [o]
+   */
+  observe(u, healthy, { now = Date.now(), onTransition } = {}) {
+    const t = healthy ? u.recordSuccess() : u.recordFailure(this.breakerThreshold, this.cooldownMs, now);
+    if (t) onTransition?.(u, t);
+  }
+
+  /**
    * @param {Upstream} u
    * @param {Attempt} attempt
    */

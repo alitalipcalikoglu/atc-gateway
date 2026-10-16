@@ -81,6 +81,7 @@ export class Application {
     this.auditClient.start();
     this.#installSignalHandlers(app.log);
     await app.listen({ port: this.config.port, host: this.config.host });
+    this.api.startHealthChecks(app.log);
     app.log.info({
       tls: this.config.tls !== null,
       routes: this.routes.routes.map((r) => ({ id: r.id, host: r.host, prefix: r.pathPrefix, upstreams: r.upstreams.length, auth: r.auth, injectsKey: r.injectApiKey !== null, policy: r.policy?.name ?? null, geo: r.geo })),

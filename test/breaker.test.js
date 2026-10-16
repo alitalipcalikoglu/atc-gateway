@@ -348,3 +348,29 @@ test('startup warning: does not fire for a user-authenticated route, a non-ip su
     assert.equal(calls.some((c) => c.level === 'warn'), false, 'none of these combinations warrant the warning');
   } finally { await app.close(); api.destroy(); }
 });
+
+test('active health checks: a dead upstream is skipped before any request hits it, and rejoins once /health passes again', async () => {
+  let healthy = false;
+  const flaky = createServer((req, res) => {
+    if (req.url === '/health') return res.writeHead(healthy ? 200 : 503).end();
+    res.writeHead(200, { 'content-type': 'text/plain' }).end('standby');
+  });
+  const primary = createServer((req, res) => res.writeHead(200, { 'content-type': 'text/plain' }).end('primary'));
+  await listen(flaky); await listen(primary);
+  const routes = RouteTable.parse({ routes: [{ id: 'svc', pathPrefix: '/svc/', upstreams: [origin(flaky), origin(primary)], healthPath: '/health' }] }, {});
+  const api = new GatewayApi({ config: testConfig({ UPSTREAM_HEALTH_INTERVAL_MS: '0' }), routes, jwt: null, logger: silentLog });
+  const app = await api.build();
+  await app.ready();
+  try {
+    const [a, b] = /** @type {UpstreamPool} */ (api.pools.get('svc')).upstreams;
+    assert.equal(await api.checkUpstreams(silentLog), 1);
+    assert.deepEqual([a.state, b.state], ['open', 'closed'], 'the failing health check opened the first upstream');
+    for (let i = 0; i < 4; i++) assert.equal((await app.inject({ url: '/svc/x' })).body, 'primary', 'traffic goes only to the healthy upstream');
+    healthy = true;
+    assert.equal(await api.checkUpstreams(silentLog), 2);
+    assert.equal(a.state, 'closed', 'a passing health check closes it without waiting for the cooldown or a client request');
+    const bodies = new Set();
+    for (let i = 0; i < 4; i++) bodies.add((await app.inject({ url: '/svc/x' })).body);
+    assert.deepEqual([...bodies].sort(), ['primary', 'standby'], 'both serve again');
+  } finally { await app.close(); api.destroy(); flaky.close(); primary.close(); }
+});

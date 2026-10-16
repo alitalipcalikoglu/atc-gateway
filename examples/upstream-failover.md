@@ -17,6 +17,18 @@ Requests alternate between the two (round-robin) over keep-alive connections.
 
 While in cooldown the upstream is skipped. When every upstream is down the gateway still tries one, so the client gets a truthful 502 rather than a guess; the first success clears the cooldown.
 
+## Active health checks
+
+Every `UPSTREAM_HEALTH_INTERVAL_MS` (default 5 s) the gateway calls each upstream's route `healthPath` (default `/health`). A failed check opens that upstream's breaker, so clients are steered away before any of their requests hit it; a passing check closes it again, so a repaired or restarted upstream rejoins within one interval without waiting for client traffic. Each transition logs `cause: "health-check"` and counts in `gateway_breaker_transitions_total`.
+
+For a primary and a warm standby (see the stack README, "High availability"), list both and keep the standby's service stopped or failing `/ready`-style checks until promoted:
+
+```json
+{ "id": "auth-public", "pathPrefix": "/api/auth/", "upstreams": ["http://10.0.0.10:3002", "http://10.0.0.20:3002"], "healthPath": "/health" }
+```
+
+Pitfall: both upstreams of a SQLite-backed service must never accept writes at the same time. The standby runs only after promotion; until then its health check fails and it gets no traffic.
+
 ## Why POST is not retried
 
 A `POST` may have reached the upstream before the connection dropped; sending it again could create a second order or a second user. Clients that need safe retries use idempotency keys at the application level (notify's `idempotencyKey`, for example).
@@ -44,5 +56,6 @@ Access log line for a retried request shows the upstream that finally answered:
 | Setting | Effect |
 |---|---|
 | `UPSTREAM_COOLDOWN_MS` | How long a failed upstream is skipped. Shorter = faster recovery, more probing failures. |
+| `UPSTREAM_HEALTH_INTERVAL_MS` | Active health check period; `0` leaves only the passive breaker. |
 | `UPSTREAM_CONNECT_TIMEOUT_MS` | Keep-alive socket idle timeout for the agents. |
 | `UPSTREAM_TIMEOUT_MS` / `timeoutMs` | Header timeout; the failing upstream is also put in cooldown. |

@@ -60,6 +60,8 @@ export class GatewayApi {
     /** @type {Map<string, UpstreamPool>} */
     this.pools = GatewayApi.#buildPools(routes, config);
     this.readyCache = { at: 0, ok: false, detail: /** @type {Record<string, string>} */ ({}) };
+    /** @type {ReturnType<typeof setInterval>|null} */
+    this.healthTimer = null;
   }
 
   /**
@@ -405,7 +407,49 @@ export class GatewayApi {
     return this.readyCache;
   }
 
+  /**
+   * Starts the active health checks (no-op when `UPSTREAM_HEALTH_INTERVAL_MS` is 0). Each pass polls
+   * every upstream of every current route once; a pass never overlaps the previous one.
+   * @param {import('../types.js').Logger} log
+   */
+  startHealthChecks(log) {
+    if (!this.config.upstreamHealthIntervalMs || this.healthTimer) return;
+    let running = false;
+    this.healthTimer = setInterval(() => {
+      if (running) return;
+      running = true;
+      this.checkUpstreams(log).finally(() => { running = false; });
+    }, this.config.upstreamHealthIntervalMs);
+    this.healthTimer.unref();
+  }
+
+  /**
+   * One health pass over the current routes' pools; returns the number of upstreams found healthy.
+   * @param {import('../types.js').Logger} log
+   */
+  async checkUpstreams(log) {
+    let healthy = 0;
+    const timeoutMs = Math.min(2_000, this.config.upstreamConnectTimeoutMs);
+    await Promise.all(this.routes.routes.map(async (route) => {
+      const pool = this.pools.get(route.id);
+      if (!pool) return;
+      await Promise.all(pool.upstreams.map(async (u) => {
+        let ok = false;
+        try { ok = (await fetch(`${u.origin}${route.healthPath}`, { signal: AbortSignal.timeout(timeoutMs), redirect: 'manual' })).ok; } catch { ok = false; }
+        if (ok) healthy += 1;
+        pool.observe(u, ok, {
+          onTransition: (_u, t) => {
+            this.metrics.breakerTransition(route.id, u.origin, t.from, t.to);
+            log.warn({ route: route.id, upstream: u.origin, from: t.from, to: t.to, cause: 'health-check' }, 'breaker transition');
+          },
+        });
+      }));
+    }));
+    return healthy;
+  }
+
   destroy() {
+    if (this.healthTimer) clearInterval(this.healthTimer);
     for (const p of this.pools.values()) p.destroy();
   }
 }

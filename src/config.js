@@ -22,6 +22,7 @@ export class Config {
     this.upstreamConnectTimeoutMs = v.upstreamConnectTimeoutMs;
     this.upstreamCooldownMs = v.upstreamCooldownMs;
     this.upstreamBreakerThreshold = v.upstreamBreakerThreshold;
+    this.upstreamHealthIntervalMs = v.upstreamHealthIntervalMs;
     this.metricsToken = v.metricsToken;
     this.hstsMaxAge = v.hstsMaxAge;
     this.serverName = v.serverName;
@@ -59,6 +60,9 @@ export class Config {
       // Stage 9: consecutive failures (closed state) before the breaker opens. Default 1 keeps the
       // pre-Stage-9 behavior (any single failure opens it) unless an operator opts into tolerance.
       upstreamBreakerThreshold: r.integer('UPSTREAM_BREAKER_THRESHOLD', 1, { min: 1 }),
+      // Active health checks: every upstream's route healthPath is polled so a dead one is skipped before
+      // a client request hits it, and a recovered one rejoins without waiting for traffic. 0 turns them off.
+      upstreamHealthIntervalMs: r.integer('UPSTREAM_HEALTH_INTERVAL_MS', 5_000, { min: 0 }),
       metricsToken,
       hstsMaxAge: r.integer('HSTS_MAX_AGE', certPath ? 31_536_000 : 0, { min: 0 }),
       ratelimit: Config.#service(r, 'RATELIMIT', { timeoutMs: r.integer('RATELIMIT_TIMEOUT_MS', 300, { min: 50 }) }),

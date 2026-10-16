@@ -19,6 +19,13 @@ besides the console.
   `policy`. Both env vars must be set together or neither (`Config.#service`).
 - geo (`GEO_URL`/`GEO_API_KEY`), optional: only used by routes that declare `geo: true`. Same
   both-or-neither rule.
+- audit (`AUDIT_URL`/`AUDIT_API_KEY`, a write-role key), optional, both-or-neither: refusals (401,
+  413, rate-limit 429) and route reloads are forwarded in the background, sampled per route, reason
+  and client IP every `AUDIT_SAMPLE_SEC` (0 = every refusal); never on the request path.
+- Active upstream health checks (`UPSTREAM_HEALTH_INTERVAL_MS`, default 5000, 0 = off): every
+  upstream's `healthPath` (default `/health`) is polled in the background; a failure opens that
+  upstream's breaker before a client request reaches it, a pass closes it again (atc-stack README,
+  "High availability").
 
 ## Persistence
 

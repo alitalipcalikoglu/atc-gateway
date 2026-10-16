@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 /**
  * @typedef {{ type: string, id: string }} AuditParty
@@ -49,7 +49,8 @@ export class AuditClient {
       this.buffer.shift();
       this.stats.dropped += 1;
     }
-    this.buffer.push({ id: randomUUID(), at: new Date().toISOString(), ...e });
+    // The platform's id format (`aud_<base36 time><16 hex>`); gateway has no service-core dependency.
+    this.buffer.push({ id: `aud_${Date.now().toString(36)}${randomBytes(8).toString('hex')}`, at: new Date().toISOString(), ...e });
     this.stats.recorded += 1;
     return true;
   }

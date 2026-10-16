@@ -66,7 +66,7 @@ npm run typecheck
 | `injectApiKey` | Name of an environment variable whose value is sent upstream as `Authorization: Bearer …`. The client's `Authorization` header is dropped. |
 | `cors` | Allowed browser origins (or `*`). Preflights are answered by the gateway. Omit for non-browser routes. |
 | `rateLimit`, `bodyLimit`, `timeoutMs` | Per-route overrides of the defaults in `.env`. |
-| `healthPath` | Polled by `/ready`; default `/health`. |
+| `healthPath` | Polled by `/ready` and the active health checks; default `/health`. |
 | `policy` | `{ "name", "subject": "ip" \| "user" \| "key", "cost", "failOpen" }`: check the ratelimit service's policy per client IP, authenticated user or hashed bearer token before forwarding (`RATELIMIT_URL` / `RATELIMIT_API_KEY`). `failOpen` is **required** whenever `policy` is set — no default; decide explicitly per route whether traffic goes through (`true`) or gets `503` (`false`) when the ratelimit service is unavailable. A public route with `subject: "ip"` and `failOpen: true` logs a startup warning (not a startup failure) — it means abuse protection disappears while ratelimit is down. |
 | `geo` | `true` adds `X-Geo-Country`, `X-Geo-Timezone`, `X-Geo-Continent` from the geo service (`GEO_URL` / `GEO_API_KEY`), cached per address; client-sent `X-Geo-*` headers are always dropped. |
 
